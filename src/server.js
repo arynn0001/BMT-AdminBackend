@@ -206,6 +206,12 @@
  * Express setup, database connection, CORS, routes and graceful shutdown.
  */
 
+
+/**
+ * BMT Admin Backend - Server Entry Point
+ * Production CORS, MongoDB, routes and graceful shutdown.
+ */
+
 import dns from "node:dns";
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
@@ -249,21 +255,24 @@ import cruiseRoutes from "./routes/cruise.routes.js";
 import staysRoutes from "./routes/Stays.routes.js";
 
 const allowedOrigins = new Set([
+  "https://birdmytrip.com",
+  "https://www.birdmytrip.com",
   "https://ops.birdmytrip.com",
   "http://localhost:3000",
   "http://localhost:5173",
-  "https://birdmytrip.com/admin",
 ]);
 
 async function startServer() {
+  // 1. Connect database
   await connectDatabase();
 
+  // 2. Initialize Express
   const app = express();
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
 
-  // Security headers
+  // 3. Security headers
   app.use(
     helmet({
       contentSecurityPolicy: false,
@@ -273,37 +282,37 @@ async function startServer() {
     })
   );
 
-  // CORS
-  const corsOptions = {
-    origin(origin, callback) {
-      // Requests without Origin are typically server-to-server or health checks.
-      if (!origin || allowedOrigins.has(origin)) {
-        return callback(null, true);
-      }
+  // 4. CORS
+  app.use(
+    cors({
+      origin(origin, callback) {
+        // Allow requests without Origin (health checks/server-to-server).
+        if (!origin || allowedOrigins.has(origin)) {
+          return callback(null, true);
+        }
 
-      logger.warn({ origin }, "CORS origin rejected");
-      return callback(new Error("Origin not allowed by CORS"));
-    },
-    credentials: true,
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
-    optionsSuccessStatus: 204,
-    maxAge: 86400,
-  };
+        logger.warn({ origin }, "CORS origin rejected");
+        return callback(new Error("Origin not allowed by CORS"));
+      },
+      credentials: true,
+      methods: [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+      ],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+      ],
+      optionsSuccessStatus: 204,
+      maxAge: 86400,
+    })
+  );
 
-  app.use(cors(corsOptions));
-
-  // Request logging
+  // 5. Request logging
   app.use(
     pinoHttp({
       logger,
@@ -312,7 +321,7 @@ async function startServer() {
     })
   );
 
-  // Rate limiting
+  // 6. Rate limiting
   app.use(
     rateLimit({
       windowMs: 60 * 1000,
@@ -323,17 +332,17 @@ async function startServer() {
         success: false,
         error: {
           code: "RATE_LIMITED",
-          message: "Too many requests, please try again later",
+          message: "Too many requests. Please try again later.",
         },
       },
     })
   );
 
-  // Body parsing
+  // 7. Parse request bodies
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-  // Root endpoint
+  // 8. Root endpoint
   app.get("/", (_req, res) => {
     res.status(200).json({
       success: true,
@@ -342,7 +351,7 @@ async function startServer() {
     });
   });
 
-  // Liveness health check
+  // 9. Health endpoint
   app.get("/health/live", (_req, res) => {
     res.status(200).json({
       status: "ok",
@@ -350,9 +359,10 @@ async function startServer() {
     });
   });
 
-  // API routes
+  // 10. Authentication
   app.use("/auth", authRoutes);
 
+  // 11. Admin routes
   app.use("/admin/dashboard", executiveCommandRoutes);
   app.use("/admin/my-work", myWorkRoutes);
   app.use("/admin/approvals", approvalRoutes);
@@ -364,6 +374,7 @@ async function startServer() {
   app.use("/admin/postmortems", postmortemRoutes);
   app.use("/admin/situation-reports", situationReportRoutes);
 
+  // 12. Bus, cab and travel routes
   app.use("/admin/bus", busRoutes);
   app.use("/admin/cab", cabRoutes);
   app.use("/admin/packages", packagesRoutes);
@@ -373,7 +384,7 @@ async function startServer() {
   app.use("/admin/cruises", cruiseRoutes);
   app.use("/admin/stays", staysRoutes);
 
-  // 404 handler
+  // 13. Not found
   app.use((req, res) => {
     res.status(404).json({
       success: false,
@@ -385,9 +396,10 @@ async function startServer() {
     });
   });
 
-  // Central error handler
+  // 14. Central error handler
   app.use(errorHandler);
 
+  // 15. Start server (Render supplies PORT)
   const port = Number(process.env.PORT || env.port || 10000);
   const host = "0.0.0.0";
 
@@ -396,19 +408,20 @@ async function startServer() {
       { host, port, environment: env.nodeEnv },
       "BMT Admin Backend started"
     );
-    logger.info(`Health check available at /health/live`);
+    logger.info("Health endpoint: /health/live");
   });
 
+  // 16. Graceful shutdown
   let shuttingDown = false;
 
-  const shutdown = async (signal) => {
+  const shutdown = (signal) => {
     if (shuttingDown) return;
     shuttingDown = true;
 
     logger.info({ signal }, "Graceful shutdown started");
 
     const forceExit = setTimeout(() => {
-      logger.error("Graceful shutdown timed out");
+      logger.error("Shutdown timed out");
       process.exit(1);
     }, 10000);
 
@@ -419,7 +432,7 @@ async function startServer() {
         await disconnectDatabase();
 
         if (error) {
-          logger.error({ err: error }, "HTTP server shutdown error");
+          logger.error({ err: error }, "HTTP server shutdown failed");
           process.exitCode = 1;
         } else {
           logger.info("Server closed successfully");
