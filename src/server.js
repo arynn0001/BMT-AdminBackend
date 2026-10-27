@@ -252,6 +252,7 @@ const allowedOrigins = new Set([
   "https://ops.birdmytrip.com",
   "http://localhost:3000",
   "http://localhost:5173",
+  "https://birdmytrip.com/admin",
 ]);
 
 async function startServer() {
