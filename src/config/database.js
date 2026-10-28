@@ -119,14 +119,12 @@
 //     logger.error({ err: error }, "Error closing MongoDB connection");
 //   }
 // }
+
 // src/config/database.js
 import dns from "node:dns";
 import mongoose from "mongoose";
 import { env } from "./env.js";
 import { logger } from "../utils/logger.js";
-
-// URI mein DB name na ho to ye use hoga (Render env mein MONGODB_DB_NAME se override kar sakte ho)
-const DEFAULT_DB_NAME = process.env.MONGODB_DB_NAME || "bmt-admin-new";
 
 let listenersAttached = false;
 
@@ -183,28 +181,12 @@ export async function connectDatabase(maxRetries = 5, retryDelayMs = 4000) {
 
   const uri = cleanMongoUri(env.mongodbUri);
   const info = describeUri(uri);
-
-  // Password log mein na aaye, isliye passwordLength hata diya
-  logger.info(
-    {
-      mongo: {
-        valid: info.valid,
-        scheme: info.scheme,
-        hosts: info.hosts,
-        dbName: info.dbName,
-      },
-    },
-    "MongoDB URI check"
-  );
+  logger.info({ mongo: info }, "MongoDB URI check");
 
   if (!info.valid) {
     logger.error(".env ki MONGODB_URI galat hai. Format: mongodb+srv://user:password@cluster0.xxxxx.mongodb.net/dbname?retryWrites=true&w=majority");
     process.exit(1);
   }
-
-  // URI mein DB name ho to wahi use hoga, warna default
-  const dbName = info.dbName === "(none)" ? DEFAULT_DB_NAME : undefined;
-  logger.info(`Using database: ${dbName || info.dbName}`);
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const dnsResult = await checkDns(info);
@@ -225,7 +207,6 @@ export async function connectDatabase(maxRetries = 5, retryDelayMs = 4000) {
     try {
       logger.info(`Connecting to MongoDB... (attempt ${attempt}/${maxRetries}, ${dnsResult.detail})`);
       await mongoose.connect(uri, {
-        ...(dbName ? { dbName } : {}),
         serverSelectionTimeoutMS: 30000,
         connectTimeoutMS: 30000,
         socketTimeoutMS: 45000,
