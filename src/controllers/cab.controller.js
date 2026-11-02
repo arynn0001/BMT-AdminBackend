@@ -435,18 +435,30 @@ export const getVendorStats = async (req, res) => {
    ========================================================= */
 
 export const getDrivers = async (req, res) => {
+  // 1. Pehle cabs fetch karo (bina populate ke)
   const cabs = await VendorCab.find({
     isActive: { $ne: false },
-  })
-    .populate("vendor", "name businessName phone")
-    .lean();
+  }).lean();
+
+  // 2. Un cabs ke vendor IDs nikaalo
+  const vendorIds = [...new Set(cabs.map((c) => c.vendor).filter(Boolean))];
+
+  // 3. Vendor details manually fetch karo
+  const vendors = await Vendor.find(
+    { _id: { $in: vendorIds } },
+    "name businessName phone"
+  ).lean();
+  
+  const vendorMap = new Map(vendors.map((v) => [String(v._id), v]));
 
   const drivers = [];
 
   cabs.forEach((c) => {
     const driver = c.driver || {};
     const name = driver.name || c.driverName || "";
-    if (!name) return;
+    if (!name) return; // Agar driver ka naam nahi hai toh skip karo
+
+    const v = c.vendor ? vendorMap.get(String(c.vendor)) : null;
 
     drivers.push({
       id: String(c._id),
@@ -467,12 +479,12 @@ export const getDrivers = async (req, res) => {
       baseLocation: c.baseLocation || c.fromCity || "",
       serviceRadiusKm: c.serviceRadiusKm || 40,
 
-      vendor: c.vendor
+      vendor: v
         ? {
-            id: String(c.vendor._id),
-            name: c.vendor.name,
-            businessName: c.vendor.businessName,
-            phone: c.vendor.phone,
+            id: String(v._id),
+            name: v.name,
+            businessName: v.businessName,
+            phone: v.phone,
           }
         : null,
 

@@ -1,17 +1,11 @@
 /**
  * Stays Model (Admin)
  *
- * Vendor aur Admin SAME MongoDB use karte hain. Isliye yahan naye data
- * nahi banaya ja raha - vendor ke collections ko hi "strict: false"
- * schema ke saath bind kiya gaya hai, taaki vendor ne jo bhi field add
- * ki ho (ya future me add kare) vo admin pe automatically fetch ho.
+ * Vendor aur Admin SAME MongoDB use karte hain. Collections ko strict:false
+ * schema se bind kiya gaya hai, taaki vendor ke saare fields fetch hon.
  *
- * Covered: Hotel, Motel, Homestay, Apartment, Villa, Palace, Resort, BnB
- *
- * IMPORTANT: collection names vendor backend ke mongoose model names se
- * derive hote hain (Hotel -> hotels, VendorApartment -> vendorapartments,
- * BnbProperty -> bnbproperties ...). Agar vendor me koi model rename ho
- * to sirf neeche COLLECTIONS me naam badalna hai.
+ * Covered: Hotel, Motel, Homestay, Apartment, Villa, Vacation House,
+ *          Guest House, Palace, Resort, BnB, Hostel
  */
 
 import mongoose from "mongoose";
@@ -19,27 +13,37 @@ import mongoose from "mongoose";
 const { Schema } = mongoose;
 
 /* ============================================================
-   COLLECTION BINDINGS (vendor ke collections, read + admin update)
+   COLLECTION BINDINGS
 ============================================================ */
 
 const COLLECTIONS = {
   // Properties
   hotel: "hotels",
+  motel: "motels",
   homestay: "homestays",
   apartment: "vendorapartments",
   palace: "palaces",
   resort: "resorts",
   bnb: "bnbproperties",
-  villa: "vacationhouses",
+  villa: "villas",
+  vacationHouse: "vacationhouses",
+  guestHouse: "guesthouses",          // ✅ naya
+  hostel: "hostels",
   motelOperator: "motelvendors",
 
   // Rooms / units
   hotelRoom: "hotelrooms",
+  motelRoom: "motelrooms",
   homestayUnit: "homestayunits",
   palaceRoomCategory: "palaceroomcategories",
   palaceRoomUnit: "palaceroomunits",
   resortRoom: "resortrooms",
   resortRoomUnit: "resortroomunits",
+  hostelRoom: "hostelrooms",
+  hostelBed: "hostelbeds",
+  villaRoom: "villaroomtypes",
+  vacationHouseRoom: "vacationhouseroomtypes",
+  guestHouseRoom: "guesthouserooms",  // ✅ naya
 
   // Rates
   apartmentRatePlan: "apartmentrateplans",
@@ -48,6 +52,10 @@ const COLLECTIONS = {
 
   // Inventory
   hotelInventory: "hotelinventories",
+  motelInventory: "motelinventories",
+  villaInventory: "villinventories",
+  vacationHouseInventory: "vacationhouseinventories",
+  guestHouseInventory: "guesthouseinventories",   // ✅ naya
   homestayInventory: "homestayinventories",
   apartmentInventory: "apartmentinventories",
   palaceInventory: "palaceinventories",
@@ -55,10 +63,15 @@ const COLLECTIONS = {
 
   // Bookings
   hotelBooking: "hotelbookings",
+  motelBooking: "motelbookings",
+  villaBooking: "villabookings",
+  vacationHouseBooking: "vacationhousebookings",
+  guestHouseBooking: "guesthousebookings",        // ✅ naya
   homestayBooking: "homestaybookings",
   apartmentBooking: "apartmentbookings",
   palaceBooking: "palacebookings",
   resortBooking: "resortbookings",
+  hostelBooking: "hostelbookings",
 
   // Reviews
   homestayReview: "homestayreviews",
@@ -75,9 +88,9 @@ function bind(modelName, collection) {
   const schema = new Schema(
     {},
     {
-      strict: false, // vendor ke saare fields aane do
+      strict: false,
       collection,
-      timestamps: false, // timestamps vendor ne already set kiye hain
+      timestamps: false,
       versionKey: false,
     }
   );
@@ -86,32 +99,47 @@ function bind(modelName, collection) {
 }
 
 export const StaysHotel = bind("Hotel", COLLECTIONS.hotel);
+export const StaysMotel = bind("Motel", COLLECTIONS.motel);
 export const StaysHomestay = bind("Homestay", COLLECTIONS.homestay);
 export const StaysApartment = bind("Apartment", COLLECTIONS.apartment);
 export const StaysPalace = bind("Palace", COLLECTIONS.palace);
 export const StaysResort = bind("Resort", COLLECTIONS.resort);
 export const StaysBnb = bind("Bnb", COLLECTIONS.bnb);
 export const StaysVilla = bind("Villa", COLLECTIONS.villa);
+export const StaysVacationHouse = bind("VacationHouse", COLLECTIONS.vacationHouse);
+export const StaysGuestHouse = bind("GuestHouse", COLLECTIONS.guestHouse);   // ✅
 export const StaysMotelOperator = bind("MotelOperator", COLLECTIONS.motelOperator);
 
 export const StaysHotelRoom = bind("HotelRoom", COLLECTIONS.hotelRoom);
+export const StaysMotelRoom = bind("MotelRoom", COLLECTIONS.motelRoom);
 export const StaysHomestayUnit = bind("HomestayUnit", COLLECTIONS.homestayUnit);
 export const StaysPalaceRoomCategory = bind("PalaceRoomCategory", COLLECTIONS.palaceRoomCategory);
 export const StaysPalaceRoomUnit = bind("PalaceRoomUnit", COLLECTIONS.palaceRoomUnit);
 export const StaysResortRoom = bind("ResortRoom", COLLECTIONS.resortRoom);
 export const StaysResortRoomUnit = bind("ResortRoomUnit", COLLECTIONS.resortRoomUnit);
+export const StaysVillaRoom = bind("VillaRoom", COLLECTIONS.villaRoom);
+export const StaysVacationHouseRoom = bind("VacationHouseRoom", COLLECTIONS.vacationHouseRoom);
+export const StaysGuestHouseRoom = bind("GuestHouseRoom", COLLECTIONS.guestHouseRoom);   // ✅
 
 export const StaysApartmentRatePlan = bind("ApartmentRatePlan", COLLECTIONS.apartmentRatePlan);
 export const StaysPalaceRatePlan = bind("PalaceRatePlan", COLLECTIONS.palaceRatePlan);
 export const StaysResortRatePlan = bind("ResortRatePlan", COLLECTIONS.resortRatePlan);
 
 export const StaysHotelInventory = bind("HotelInventory", COLLECTIONS.hotelInventory);
+export const StaysMotelInventory = bind("MotelInventory", COLLECTIONS.motelInventory);
+export const StaysVillaInventory = bind("VillaInventory", COLLECTIONS.villaInventory);
+export const StaysVacationHouseInventory = bind("VacationHouseInventory", COLLECTIONS.vacationHouseInventory);
+export const StaysGuestHouseInventory = bind("GuestHouseInventory", COLLECTIONS.guestHouseInventory);   // ✅
 export const StaysHomestayInventory = bind("HomestayInventory", COLLECTIONS.homestayInventory);
 export const StaysApartmentInventory = bind("ApartmentInventory", COLLECTIONS.apartmentInventory);
 export const StaysPalaceInventory = bind("PalaceInventory", COLLECTIONS.palaceInventory);
 export const StaysResortInventory = bind("ResortInventory", COLLECTIONS.resortInventory);
 
 export const StaysHotelBooking = bind("HotelBooking", COLLECTIONS.hotelBooking);
+export const StaysMotelBooking = bind("MotelBooking", COLLECTIONS.motelBooking);
+export const StaysVillaBooking = bind("VillaBooking", COLLECTIONS.villaBooking);
+export const StaysVacationHouseBooking = bind("VacationHouseBooking", COLLECTIONS.vacationHouseBooking);
+export const StaysGuestHouseBooking = bind("GuestHouseBooking", COLLECTIONS.guestHouseBooking);   // ✅
 export const StaysHomestayBooking = bind("HomestayBooking", COLLECTIONS.homestayBooking);
 export const StaysApartmentBooking = bind("ApartmentBooking", COLLECTIONS.apartmentBooking);
 export const StaysPalaceBooking = bind("PalaceBooking", COLLECTIONS.palaceBooking);
@@ -120,11 +148,14 @@ export const StaysResortBooking = bind("ResortBooking", COLLECTIONS.resortBookin
 export const StaysHomestayReview = bind("HomestayReview", COLLECTIONS.homestayReview);
 export const StaysResortReview = bind("ResortReview", COLLECTIONS.resortReview);
 
+export const StaysHostel = bind("Hostel", COLLECTIONS.hostel);
+export const StaysHostelRoom = bind("HostelRoom", COLLECTIONS.hostelRoom);
+export const StaysHostelBed = bind("HostelBed", COLLECTIONS.hostelBed);
+export const StaysHostelBooking = bind("HostelBooking", COLLECTIONS.hostelBooking);
+
 export const StaysVendor = bind("Vendor", COLLECTIONS.vendor);
 
-/* ============================================================
-   NORMALIZED STATUS (admin UI ke liye sabka ek hi format)
-============================================================ */
+/* ============================================================ */
 
 export const STAY_STATUSES = [
   "DRAFT",
@@ -135,15 +166,7 @@ export const STAY_STATUSES = [
   "SUSPENDED",
 ];
 
-/* ============================================================
-   STAY TYPE REGISTRY
-   Har type ki vendor-side differences yahan define hain.
-
-   statusCase : vendor DB me status "lower" ya "upper" case me hai
-   statusKind : "enum"    -> status field hai
-                "boolean" -> sirf isApproved boolean hai (BnB)
-   statusEnum : vendor schema me allowed values (admin sirf inhi me likhega)
-============================================================ */
+/* ============================================================ */
 
 const get = (obj, path, fallback = undefined) => {
   const value = path
@@ -165,7 +188,7 @@ export const STAY_TYPES = {
     label: "Hotel",
     model: StaysHotel,
     vendorField: "vendor",
-    baseFilter: { hotelType: { $not: /motel/i } },
+    baseFilter: {},
     statusKind: "enum",
     statusCase: "lower",
     statusEnum: ["pending", "approved", "rejected"],
@@ -184,22 +207,22 @@ export const STAY_TYPES = {
 
   motel: {
     label: "Motel",
-    model: StaysHotel, // motel vendor ke hotel collection me hotelType=motel ke saath save hota hai
-    vendorField: "vendor",
-    baseFilter: { hotelType: /motel/i },
-    statusKind: "enum",
-    statusCase: "lower",
-    statusEnum: ["pending", "approved", "rejected"],
-    nameOf: (d) => d.hotelName,
-    subtypeOf: (d) => d.hotelType || "motel",
-    cityOf: (d) => d.city,
-    stateOf: (d) => d.state,
-    imageOf: (d) => firstImage(d.hotelImages),
-    priceOf: (d) => d.pricePerNight ?? minRoomPrice(d.rooms),
-    roomsOf: (d) => (Array.isArray(d.rooms) ? d.rooms.length : 0),
+    model: StaysMotel,
+    vendorField: "vendorId",
+    vendorAltField: "vendor",
+    baseFilter: {},
+    statusKind: "motel",
+    statusEnum: [],
+    nameOf: (d) => d.motelName || d.name,
+    subtypeOf: (d) => d.motelType || "motel",
+    cityOf: (d) => d.city || get(d, "address.city"),
+    stateOf: (d) => d.state || get(d, "address.state"),
+    imageOf: (d) => firstImage(d.images) || firstImage(d.motelImages) || d.coverImage || "",
+    priceOf: (d) => d.pricePerNight ?? d.basePrice ?? null,
+    roomsOf: (d) => d.totalRooms ?? 0,
     featuredOf: (d) => !!d.featured,
     ratingOf: (d) => d.averageRating ?? 0,
-    searchFields: ["hotelName", "city", "state", "phone", "email", "area"],
+    searchFields: ["motelName", "name", "city", "state", "phone", "email", "addressLine", "pincode"],
     cityField: "city",
   },
 
@@ -216,7 +239,7 @@ export const STAY_TYPES = {
     cityOf: (d) => d.city,
     stateOf: (d) => d.state,
     imageOf: (d) => d.coverImage || firstImage(d.propertyImages),
-    priceOf: () => null, // price HomestayUnit me hota hai
+    priceOf: () => null,
     roomsOf: (d) => d.totalBedrooms ?? 0,
     featuredOf: (d) => !!d.featured,
     ratingOf: (d) => d.averageRating ?? 0,
@@ -250,21 +273,79 @@ export const STAY_TYPES = {
     model: StaysVilla,
     vendorField: "vendorId",
     baseFilter: {},
-    statusKind: "enum",
-    statusCase: "upper",
-    statusEnum: ["PENDING", "APPROVED", "REJECTED", "INACTIVE"],
-    defaultStatus: "APPROVED", // vendor VacationHouse me status field hi nahi hai
+    statusKind: "vacation",
+    statusEnum: [],
     nameOf: (d) => d.propertyName,
-    subtypeOf: () => "villa",
+    subtypeOf: (d) => d.propertyType || "Villa",
     cityOf: (d) => get(d, "address.city"),
     stateOf: (d) => get(d, "address.state"),
-    imageOf: (d) => firstImage(d.images?.frontView),
+    imageOf: (d) =>
+      firstImage(d.images?.frontView) ||
+      firstImage(d.images?.bedRoom) ||
+      firstImage(d.images?.kitchen) ||
+      firstImage(d.images?.washroom),
     priceOf: (d) => get(d, "pricing.basePrice", null),
-    roomsOf: () => 1,
+    roomsOf: (d) => d.bedrooms ?? 1,
     featuredOf: (d) => !!d.featured,
     ratingOf: (d) => d.starRating ?? 0,
-    searchFields: ["propertyName", "address.city", "address.state", "owner.ownerName", "owner.phone"],
+    searchFields: [
+      "propertyName", "propertyId", "propertyType",
+      "address.city", "address.state", "address.pincode",
+      "owner.ownerName", "owner.phone", "owner.email",
+    ],
     cityField: "address.city",
+  },
+
+  vacationhouse: {
+    label: "Vacation House",
+    model: StaysVacationHouse,
+    vendorField: "vendorId",
+    baseFilter: {},
+    statusKind: "vacation",
+    statusEnum: [],
+    nameOf: (d) => d.propertyName,
+    subtypeOf: (d) => d.propertyType || "Vacation Home",
+    cityOf: (d) => get(d, "address.city"),
+    stateOf: (d) => get(d, "address.state"),
+    imageOf: (d) =>
+      firstImage(d.images?.frontView) ||
+      firstImage(d.images?.bedRoom) ||
+      firstImage(d.images?.kitchen) ||
+      firstImage(d.images?.washroom),
+    priceOf: (d) => get(d, "pricing.basePrice", null),
+    roomsOf: (d) => d.bedrooms ?? 1,
+    featuredOf: (d) => !!d.featured,
+    ratingOf: (d) => d.starRating ?? 0,
+    searchFields: [
+      "propertyName", "propertyId", "propertyType",
+      "address.city", "address.state", "address.pincode",
+      "owner.ownerName", "owner.phone", "owner.email",
+    ],
+    cityField: "address.city",
+  },
+
+  // ✅ GUEST HOUSE — "guesthouses" collection.
+  // Vendor schema: status enum ["pending","approved","rejected"], default "approved";
+  // isActive boolean; guestHouseName; city; guestHouseImages[]; pricePerNight.
+  guesthouse: {
+    label: "Guest House",
+    model: StaysGuestHouse,
+    vendorField: "vendor",
+    baseFilter: {},
+    statusKind: "enum",
+    statusCase: "lower",
+    statusEnum: ["pending", "approved", "rejected"],
+    nameOf: (d) => d.guestHouseName,
+    subtypeOf: (d) => d.guestHouseType,
+    cityOf: (d) => d.city,
+    stateOf: (d) => d.state,
+    imageOf: (d) => firstImage(d.guestHouseImages),
+    priceOf: (d) => d.pricePerNight ?? null,
+    roomsOf: (d) => d.totalRooms ?? 0,     // totalRooms guest house pe nahi hota — 0 rahega; listRooms se aayega
+    featuredOf: (d) => !!d.featured,
+    ratingOf: (d) => d.averageRating ?? 0,
+    searchFields: ["guestHouseName", "city", "state", "phone", "email", "area", "hostName"],
+    cityField: "city",
   },
 
   palace: {
@@ -280,7 +361,7 @@ export const STAY_TYPES = {
     cityOf: (d) => get(d, "address.city"),
     stateOf: (d) => get(d, "address.state"),
     imageOf: (d) => get(d, "coverImage.url") || firstImage(d.images),
-    priceOf: () => null, // price rate plan me hota hai
+    priceOf: () => null,
     roomsOf: (d) => d.totalRooms ?? 0,
     featuredOf: (d) => !!d.isFeatured,
     ratingOf: (d) => d.starRating ?? 0,
@@ -314,9 +395,9 @@ export const STAY_TYPES = {
   bnb: {
     label: "BnB",
     model: StaysBnb,
-    vendorField: "vendor", // bnb schema me vendor ref nahi hai, hota hai to use ho jaata hai
+    vendorField: "vendor",
     baseFilter: {},
-    statusKind: "boolean", // sirf isApproved
+    statusKind: "boolean",
     statusEnum: [],
     nameOf: (d) => d.propertyName,
     subtypeOf: (d) => d.propertyType,
@@ -332,6 +413,26 @@ export const STAY_TYPES = {
     cityField: "city",
     featuredField: "isFeatured",
   },
+
+  hostel: {
+    label: "Hostel",
+    model: StaysHostel,
+    vendorField: "vendorId",
+    baseFilter: {},
+    statusKind: "active",
+    statusEnum: [],
+    nameOf: (d) => d.hostelName,
+    subtypeOf: (d) => d.hostelType,
+    cityOf: (d) => d.city,
+    stateOf: (d) => d.state,
+    imageOf: (d) => firstImage(d.images),
+    priceOf: () => null,
+    roomsOf: () => 0,
+    featuredOf: (d) => !!d.featured,
+    ratingOf: () => 0,
+    searchFields: ["hostelName", "city", "state", "address", "contactName", "contactPhone", "contactEmail"],
+    cityField: "city",
+  },
 };
 
 export const STAY_TYPE_KEYS = Object.keys(STAY_TYPES);
@@ -344,28 +445,65 @@ function minRoomPrice(rooms) {
   return prices.length ? Math.min(...prices) : null;
 }
 
-/* ============================================================
-   STATUS HELPERS
-============================================================ */
+/* ============================================================ */
 
-/** Vendor ka status value -> admin ka normalized UPPERCASE status */
+export function vendorIdOf(cfg, d) {
+  const v = d?.[cfg.vendorField] ?? (cfg.vendorAltField ? d?.[cfg.vendorAltField] : null);
+  return v ? String(v) : null;
+}
+
+export function vendorClause(cfg, value) {
+  const fields = [cfg.vendorField, cfg.vendorAltField].filter(Boolean);
+  if (fields.length === 1) return { [fields[0]]: value };
+  return { $or: fields.map((f) => ({ [f]: value })) };
+}
+
+export function vendorExpr(cfg) {
+  if (!cfg.vendorAltField) return `$${cfg.vendorField}`;
+  return { $ifNull: [`$${cfg.vendorField}`, `$${cfg.vendorAltField}`] };
+}
+
+/* ============================================================ */
+
+const isBlank = (v) => v === undefined || v === null || v === "";
+
 export function normalizeStatus(type, doc) {
   const cfg = STAY_TYPES[type];
+
+  if (cfg.statusKind === "active") {
+    return doc.isActive === false ? "INACTIVE" : "APPROVED";
+  }
 
   if (cfg.statusKind === "boolean") {
     if (doc.isActive === false) return "INACTIVE";
     return doc.isApproved ? "APPROVED" : "PENDING";
   }
 
+  if (cfg.statusKind === "vacation") {
+    const raw = String(doc.status ?? "active").toLowerCase();
+    if (raw !== "inactive") return "APPROVED";
+    if (!isBlank(doc.rejectionReason)) return "REJECTED";
+    if (!isBlank(doc.suspensionReason)) return "SUSPENDED";
+    return "INACTIVE";
+  }
+
+  if (cfg.statusKind === "motel") {
+    const raw = String(doc.status ?? "").toLowerCase();
+    if (raw === "rejected" || (doc.isApproved === false && !isBlank(doc.rejectionReason))) return "REJECTED";
+    if (raw === "pending" || doc.isApproved === false) return "PENDING";
+    if (raw === "draft") return "DRAFT";
+    if (raw === "suspended") return "SUSPENDED";
+    if (raw === "inactive" || doc.isActive === false) return "INACTIVE";
+    return "APPROVED";
+  }
+
   const raw = doc.status ?? cfg.defaultStatus ?? "PENDING";
   const upper = String(raw).toUpperCase();
 
-  // soft-disable flag wali types (hotel etc.)
   if (upper === "APPROVED" && doc.isActive === false) return "INACTIVE";
   return upper;
 }
 
-/** Admin ka action -> vendor DB me likhne wala patch (case aur type ke hisaab se) */
 export function buildStatusPatch(type, action, { reason = "", adminId = null } = {}) {
   const cfg = STAY_TYPES[type];
   const now = new Date();
@@ -373,7 +511,6 @@ export function buildStatusPatch(type, action, { reason = "", adminId = null } =
 
   const writeStatus = (value) => {
     const target = cfg.statusEnum.find((s) => s.toUpperCase() === value);
-    // enum me value na ho (e.g. hotel me SUSPENDED nahi) to isActive se handle hoga
     return target || null;
   };
 
@@ -384,23 +521,83 @@ export function buildStatusPatch(type, action, { reason = "", adminId = null } =
     patch.approvedAt = now;
   };
 
-  if (cfg.statusKind === "boolean") {
-    // BnB
+  if (cfg.statusKind === "active") {
     switch (action) {
       case "approve":
-        patch.isApproved = true;
+      case "reactivate":
         patch.isActive = true;
+        patch.rejectionReason = "";
         break;
       case "reject":
-        patch.isApproved = false;
         patch.isActive = false;
         patch.rejectionReason = reason;
         break;
       case "suspend":
         patch.isActive = false;
+        if (reason) patch.suspensionReason = reason;
         break;
+      default:
+        return null;
+    }
+    return patch;
+  }
+
+  if (cfg.statusKind === "boolean") {
+    switch (action) {
+      case "approve": patch.isApproved = true; patch.isActive = true; break;
+      case "reject": patch.isApproved = false; patch.isActive = false; patch.rejectionReason = reason; break;
+      case "suspend": patch.isActive = false; break;
+      case "reactivate": patch.isActive = true; break;
+      default: return null;
+    }
+    return patch;
+  }
+
+  if (cfg.statusKind === "vacation") {
+    switch (action) {
+      case "approve":
       case "reactivate":
+        patch.status = "active";
+        patch.rejectionReason = "";
+        patch.suspensionReason = "";
+        if (action === "approve") withAdmin();
+        break;
+      case "reject":
+        patch.status = "inactive";
+        patch.rejectionReason = reason;
+        patch.suspensionReason = "";
+        break;
+      case "suspend":
+        patch.status = "inactive";
+        patch.suspensionReason = reason || "Suspended by admin";
+        patch.rejectionReason = "";
+        break;
+      default:
+        return null;
+    }
+    return patch;
+  }
+
+  if (cfg.statusKind === "motel") {
+    switch (action) {
+      case "approve":
+      case "reactivate":
+        patch.status = "active";
         patch.isActive = true;
+        patch.isApproved = true;
+        patch.rejectionReason = "";
+        withAdmin();
+        break;
+      case "reject":
+        patch.status = "inactive";
+        patch.isActive = false;
+        patch.isApproved = false;
+        patch.rejectionReason = reason;
+        break;
+      case "suspend":
+        patch.status = "inactive";
+        patch.isActive = false;
+        if (reason) patch.suspensionReason = reason;
         break;
       default:
         return null;
@@ -444,11 +641,16 @@ export function buildStatusPatch(type, action, { reason = "", adminId = null } =
   return patch;
 }
 
-/** Status filter (admin UPPERCASE) -> vendor DB ka query condition */
 export function buildStatusFilter(type, status) {
   if (!status) return null;
   const cfg = STAY_TYPES[type];
   const upper = String(status).toUpperCase();
+
+  if (cfg.statusKind === "active") {
+    if (upper === "APPROVED") return { isActive: { $ne: false } };
+    if (["INACTIVE", "SUSPENDED", "REJECTED"].includes(upper)) return { isActive: false };
+    return { _id: { $exists: false } };
+  }
 
   if (cfg.statusKind === "boolean") {
     if (upper === "APPROVED") return { isApproved: true, isActive: { $ne: false } };
@@ -456,6 +658,39 @@ export function buildStatusFilter(type, status) {
     if (upper === "REJECTED") return { isApproved: false, rejectionReason: { $exists: true, $ne: "" } };
     if (upper === "INACTIVE" || upper === "SUSPENDED") return { isActive: false };
     return null;
+  }
+
+  if (cfg.statusKind === "vacation") {
+    const blank = (f) => ({ $or: [{ [f]: { $exists: false } }, { [f]: { $in: ["", null] } }] });
+    const filled = (f) => ({ [f]: { $exists: true, $nin: ["", null] } });
+
+    switch (upper) {
+      case "APPROVED": return { status: { $ne: "inactive" } };
+      case "REJECTED": return { status: "inactive", ...filled("rejectionReason") };
+      case "SUSPENDED": return { status: "inactive", ...filled("suspensionReason"), ...blank("rejectionReason") };
+      case "INACTIVE": return { status: "inactive", $and: [blank("rejectionReason"), blank("suspensionReason")] };
+      default: return { _id: { $exists: false } };
+    }
+  }
+
+  if (cfg.statusKind === "motel") {
+    const hasReason = { rejectionReason: { $exists: true, $nin: ["", null] } };
+    const noReason = { $or: [{ rejectionReason: { $exists: false } }, { rejectionReason: { $in: ["", null] } }] };
+
+    switch (upper) {
+      case "REJECTED": return { $or: [{ status: "rejected" }, { isApproved: false, ...hasReason }] };
+      case "PENDING": return { $or: [{ status: "pending" }, { $and: [{ isApproved: false }, noReason, { status: { $ne: "rejected" } }] }] };
+      case "DRAFT": return { status: "draft" };
+      case "SUSPENDED": return { status: "suspended" };
+      case "INACTIVE": return { $or: [{ status: "inactive" }, { isActive: false }] };
+      case "APPROVED":
+        return {
+          status: { $nin: ["draft", "inactive", "pending", "rejected", "suspended"] },
+          isApproved: { $ne: false },
+          isActive: { $ne: false },
+        };
+      default: return null;
+    }
   }
 
   const stored = cfg.statusCase === "lower" ? upper.toLowerCase() : upper;
@@ -473,7 +708,6 @@ export function buildStatusFilter(type, status) {
     return { status: stored, isActive: { $ne: false } };
   }
 
-  // villa: status field nahi hota, missing = APPROVED
   if (cfg.defaultStatus && upper === cfg.defaultStatus) {
     return { $or: [{ status: stored }, { status: { $exists: false } }] };
   }
@@ -481,14 +715,12 @@ export function buildStatusFilter(type, status) {
   return { status: stored };
 }
 
-/* ============================================================
-   NORMALIZER - list/card ke liye ek jaisa shape
-============================================================ */
+/* ============================================================ */
 
 export function summarizeStay(type, doc, vendorMap = {}) {
   const cfg = STAY_TYPES[type];
   const d = typeof doc.toObject === "function" ? doc.toObject() : doc;
-  const vendorId = d[cfg.vendorField] ? String(d[cfg.vendorField]) : null;
+  const vendorId = vendorIdOf(cfg, d);
   const vendor = vendorId ? vendorMap[vendorId] : null;
 
   return {
@@ -498,7 +730,10 @@ export function summarizeStay(type, doc, vendorMap = {}) {
     name: cfg.nameOf(d) || "(unnamed)",
     subtype: cfg.subtypeOf(d) || null,
     status: normalizeStatus(type, d),
-    isActive: d.isActive !== false,
+    isActive:
+      cfg.statusKind === "vacation"
+        ? String(d.status ?? "active").toLowerCase() !== "inactive"
+        : d.isActive !== false,
     featured: cfg.featuredOf(d),
     rejectionReason: d.rejectionReason || "",
     city: cfg.cityOf(d) || "",
@@ -527,9 +762,7 @@ export function summarizeStay(type, doc, vendorMap = {}) {
   };
 }
 
-/* ============================================================
-   BOOKING REGISTRY (5 booking collections -> 1 shape)
-============================================================ */
+/* ============================================================ */
 
 export const BOOKING_TYPES = {
   hotel: {
@@ -550,6 +783,94 @@ export const BOOKING_TYPES = {
     refField: "bookingNumber",
     searchFields: ["bookingNumber", "guest.name", "guest.email", "guest.phone"],
   },
+
+  motel: {
+    model: StaysMotelBooking,
+    propertyField: "motelId",
+    vendorField: "vendorId",
+    roomField: "roomId",
+    refOf: (b) => b.bookingRef,
+    guestOf: (b) => ({ name: b.guestName || "", email: b.guestEmail || "", phone: b.guestPhone || "" }),
+    checkInField: "checkInDate",
+    checkOutField: "checkOutDate",
+    statusField: "bookingStatus",
+    paymentStatusField: "paymentStatus",
+    amountField: "totalAmount",
+    amountOf: (b) => b.totalAmount ?? 0,
+    commissionOf: () => null,
+    vendorAmountOf: () => null,
+    settlementField: null,
+    refField: "bookingRef",
+    searchFields: ["bookingRef", "guestName", "guestEmail", "guestPhone", "motelName", "roomName", "roomNumber"],
+  },
+
+  villa: {
+    model: StaysVillaBooking,
+    propertyField: "houseId",
+    vendorField: "vendorId",
+    roomField: null,
+    dateType: "string",
+    refOf: (b) => b.bookingId,
+    guestOf: (b) => ({ name: get(b, "guest.name", ""), email: get(b, "guest.email", ""), phone: get(b, "guest.phone", "") }),
+    checkInField: "checkIn",
+    checkOutField: "checkOut",
+    statusField: "status",
+    paymentStatusField: "paymentStatus",
+    amountField: "pricing.totalAmount",
+    amountOf: (b) => get(b, "pricing.totalAmount", 0),
+    commissionOf: () => null,
+    vendorAmountOf: () => null,
+    settlementField: null,
+    refField: "bookingId",
+    searchFields: ["bookingId", "guest.name", "guest.email", "guest.phone"],
+  },
+
+  vacationhouse: {
+    model: StaysVacationHouseBooking,
+    propertyField: "houseId",
+    vendorField: "vendorId",
+    roomField: null,
+    dateType: "string",
+    refOf: (b) => b.bookingId,
+    guestOf: (b) => ({ name: get(b, "guest.name", ""), email: get(b, "guest.email", ""), phone: get(b, "guest.phone", "") }),
+    checkInField: "checkIn",
+    checkOutField: "checkOut",
+    statusField: "status",
+    paymentStatusField: "paymentStatus",
+    amountField: "pricing.totalAmount",
+    amountOf: (b) => get(b, "pricing.totalAmount", 0),
+    commissionOf: () => null,
+    vendorAmountOf: () => null,
+    settlementField: null,
+    refField: "bookingId",
+    searchFields: ["bookingId", "guest.name", "guest.email", "guest.phone"],
+  },
+
+  // ✅ GUEST HOUSE booking (guesthousebookings)
+  // Ek doc = ek room type. checkIn/checkOut Date type hain (dateType string NAHI).
+  // status UPPERCASE (PENDING/CONFIRMED/CHECKED_IN/COMPLETED/CANCELLED/NO_SHOW).
+  // paymentStatus PENDING/PARTIALLY_PAID/PAID/REFUND_PENDING/REFUNDED.
+  // Reference field: bookingCode.
+  guesthouse: {
+    model: StaysGuestHouseBooking,
+    propertyField: "guestHouse",
+    vendorField: "vendor",
+    roomField: "room",
+    refOf: (b) => b.bookingCode,
+    guestOf: (b) => ({ name: b.guestName || "", email: b.guestEmail || "", phone: b.guestPhone || "" }),
+    checkInField: "checkIn",
+    checkOutField: "checkOut",
+    statusField: "bookingStatus",
+    paymentStatusField: "paymentStatus",
+    amountField: "pricing.totalAmount",
+    amountOf: (b) => get(b, "pricing.totalAmount", 0),
+    commissionOf: () => null,
+    vendorAmountOf: () => null,
+    settlementField: null,
+    refField: "bookingCode",
+    searchFields: ["bookingCode", "guestName", "guestEmail", "guestPhone", "guestHouseName", "roomName"],
+  },
+
   homestay: {
     model: StaysHomestayBooking,
     propertyField: "homestay",
@@ -568,6 +889,7 @@ export const BOOKING_TYPES = {
     refField: "bookingId",
     searchFields: ["bookingId", "guestName", "guestEmail", "guestPhone"],
   },
+
   apartment: {
     model: StaysApartmentBooking,
     propertyField: "apartment",
@@ -590,6 +912,7 @@ export const BOOKING_TYPES = {
     refField: "bookingId",
     searchFields: ["bookingId", "guest.firstName", "guest.lastName", "guest.email", "guest.phone"],
   },
+
   palace: {
     model: StaysPalaceBooking,
     propertyField: "palace",
@@ -608,6 +931,7 @@ export const BOOKING_TYPES = {
     refField: "bookingReference",
     searchFields: ["bookingReference", "guest.name", "guest.email", "guest.phone"],
   },
+
   resort: {
     model: StaysResortBooking,
     propertyField: "resort",
@@ -626,6 +950,26 @@ export const BOOKING_TYPES = {
     refField: "bookingId",
     searchFields: ["bookingId", "leadGuest.name", "leadGuest.email", "leadGuest.phone"],
   },
+
+  hostel: {
+    model: StaysHostelBooking,
+    propertyField: "hostelId",
+    vendorField: "vendorId",
+    roomField: "roomId",
+    refOf: (b) => b.bookingRef,
+    guestOf: (b) => ({ name: b.guestName || "", email: b.guestEmail || "", phone: b.guestPhone || "" }),
+    checkInField: "checkInDate",
+    checkOutField: "checkOutDate",
+    statusField: "bookingStatus",
+    paymentStatusField: "paymentStatus",
+    amountField: "totalAmount",
+    amountOf: (b) => b.totalAmount ?? 0,
+    commissionOf: () => null,
+    vendorAmountOf: () => null,
+    settlementField: null,
+    refField: "bookingRef",
+    searchFields: ["bookingRef", "guestName", "guestEmail", "guestPhone", "hostelName"],
+  },
 };
 
 export const BOOKING_TYPE_KEYS = Object.keys(BOOKING_TYPES);
@@ -634,19 +978,20 @@ export function summarizeBooking(type, doc, propertyMap = {}) {
   const cfg = BOOKING_TYPES[type];
   const b = typeof doc.toObject === "function" ? doc.toObject() : doc;
   const propId = b[cfg.propertyField] ? String(b[cfg.propertyField]) : null;
+  const vKey = cfg.vendorField || "vendor";
 
   return {
     id: String(b._id),
     type,
     reference: cfg.refOf(b) || String(b._id),
     property: propId ? propertyMap[propId] || { id: propId } : null,
-    vendorId: b.vendor ? String(b.vendor) : null,
+    vendorId: b[vKey] ? String(b[vKey]) : null,
     guest: cfg.guestOf(b),
     checkIn: b[cfg.checkInField] || null,
     checkOut: b[cfg.checkOutField] || null,
     nights: b.nights ?? b.totalNights ?? null,
-    status: String(get(b, cfg.statusField, "PENDING")).toUpperCase(),
-    paymentStatus: String(get(b, cfg.paymentStatusField, "PENDING")).toUpperCase(),
+    status: String(get(b, cfg.statusField, "PENDING")).toUpperCase().replace(/[-\s]/g, "_"),
+    paymentStatus: String(get(b, cfg.paymentStatusField, "PENDING")).toUpperCase().replace(/[-\s]/g, "_"),
     amount: cfg.amountOf(b),
     commission: cfg.commissionOf(b),
     vendorAmount: cfg.vendorAmountOf(b),
