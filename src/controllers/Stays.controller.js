@@ -1,8 +1,10 @@
 /**
  * Stays Controller (Admin)
  *
- * Types: hotel | motel | homestay | apartment | villa | vacationhouse |
- *        guesthouse | palace | resort | bnb | hostel
+ * Types: hotel | motel | homestay | apartment | serviceapartment | villa |
+ *        vacationhouse | guesthouse | palace | resort | bnb | hostel | campsite
+ *
+ * serviceapartment = apartment ka alias (same collection / same API).
  */
 
 import mongoose from "mongoose";
@@ -10,9 +12,11 @@ import { logger } from "../utils/logger.js";
 import {
   STAY_TYPES,
   STAY_TYPE_KEYS,
+  STAY_DEFAULT_KEYS,
   STAY_STATUSES,
   BOOKING_TYPES,
-  BOOKING_TYPE_KEYS,
+  BOOKING_DEFAULT_KEYS,
+  canon,
   StaysVendor,
   StaysMotelOperator,
   StaysHotelRoom,
@@ -20,8 +24,9 @@ import {
   StaysMotelInventory,
   StaysVillaInventory,
   StaysVacationHouseInventory,
-  StaysGuestHouseRoom,               // ✅
-  StaysGuestHouseInventory,          // ✅
+  StaysGuestHouseRoom,
+  StaysGuestHouseInventory,
+  StaysCampsiteUnit,                 // ✅ campsite tents/units
   StaysHomestayUnit,
   StaysPalaceRoomCategory,
   StaysPalaceRoomUnit,
@@ -81,7 +86,7 @@ function pageParams(query, defaultLimit = 20, maxLimit = 100) {
 }
 
 function parseTypes(raw) {
-  if (!raw) return STAY_TYPE_KEYS;
+  if (!raw) return STAY_DEFAULT_KEYS;
   const requested = String(raw).split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
   const invalid = requested.filter((t) => !STAY_TYPES[t]);
   if (invalid.length) {
@@ -94,7 +99,7 @@ function parseTypes(raw) {
 }
 
 function parseBookingTypes(raw) {
-  if (!raw) return BOOKING_TYPE_KEYS;
+  if (!raw) return BOOKING_DEFAULT_KEYS;
   const requested = String(raw).split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
   const invalid = requested.filter((t) => !BOOKING_TYPES[t]);
   if (invalid.length) {
@@ -213,14 +218,12 @@ const INVENTORY = {
     total: "totalRooms", avail: "availableRooms", booked: "bookedRooms", blocked: "blockedRooms",
     stopExpr: { $eq: ["$status", "BLOCKED"] },
   },
-  // ✅ GUEST HOUSE — GuestHouseInventory
-  // Fields: totalRooms, bookedRooms, stopSell (no separate "blocked" field).
-  // availableRooms is a VIRTUAL in vendor — yahan compute karna padega.
+  // GUEST HOUSE — availableRooms vendor me virtual hai, yahan compute hota hai.
   guesthouse: {
     model: StaysGuestHouseInventory,
     propertyField: "guestHouse",
     total: "totalRooms",
-    avail: null,                      // virtual — computed below
+    avail: null,
     booked: "bookedRooms",
     blocked: null,
     stopExpr: { $eq: ["$stopSell", true] },
@@ -232,7 +235,7 @@ const withAvailable = (r) => ({
   availableUnits: (r.totalUnits ?? 1) - (r.bookedUnits ?? 0) - (r.blockedUnits ?? 0),
 });
 
-// Guest House inventory ke liye: availableRooms = totalRooms - bookedRooms (stopSell => 0)
+// Guest House inventory: availableRooms = totalRooms - bookedRooms (stopSell => 0)
 const withGhAvailable = (r) => {
   const stop = Boolean(r.stopSell);
   return {
@@ -261,7 +264,6 @@ const STRING_INVENTORY = {
   },
 };
 
-// ✅ Guest House inventory special-case: guestHouse field, Date type, decorate withGhAvailable
 const GH_INVENTORY = {
   model: StaysGuestHouseInventory,
   propertyField: "guestHouse",
@@ -284,8 +286,9 @@ const ROOMS = {
     model: StaysHostelRoom, propertyField: "hostelId",
     units: { model: StaysHostelBed, propertyField: "hostelId", groupField: "roomId" },
   },
-  // ✅ Guest House rooms — GuestHouseRoom, guestHouse field
   guesthouse: { model: StaysGuestHouseRoom, propertyField: "guestHouse" },
+  // ✅ Campsite units (tents / cottages) — CampsiteUnit, campsiteId field
+  campsite: { model: StaysCampsiteUnit, propertyField: "campsiteId" },
 };
 
 const RATE_PLANS = {
@@ -333,15 +336,20 @@ async function statusBreakdown(type) {
 
 export const getMeta = handle(async (_req, res) => {
   sendOk(res, {
-    types: STAY_TYPE_KEYS.map((key) => ({
-      key,
-      label: STAY_TYPES[key].label,
-      hasRooms: !!ROOMS[key],
-      hasInventory: !!INVENTORY[key] || !!STRING_INVENTORY[key] || (key === "guesthouse" ? true : false),
-      hasRatePlans: !!RATE_PLANS[key],
-      hasReviews: !!REVIEWS[key],
-      hasBookings: !!BOOKING_TYPES[key],
-    })),
+    types: STAY_TYPE_KEYS.map((key) => {
+      const base = canon(key);
+      return {
+        key,
+        label: STAY_TYPES[key].label,
+        alias: !!STAY_TYPES[key].aliasOf,
+        aliasOf: STAY_TYPES[key].aliasOf || null,
+        hasRooms: !!ROOMS[base],
+        hasInventory: !!INVENTORY[base] || !!STRING_INVENTORY[base],
+        hasRatePlans: !!RATE_PLANS[base],
+        hasReviews: !!REVIEWS[base],
+        hasBookings: !!BOOKING_TYPES[key],
+      };
+    }),
     statuses: STAY_STATUSES,
     actions: ["approve", "reject", "suspend", "reactivate"],
     bookingStatuses: [
@@ -361,18 +369,18 @@ export const getDashboard = handle(async (_req, res) => {
   const twoWeeksAgo = addDays(now, -14);
   const next7 = addDays(today, 7);
 
-  const breakdownList = await Promise.all(STAY_TYPE_KEYS.map(statusBreakdown));
+  const breakdownList = await Promise.all(STAY_DEFAULT_KEYS.map(statusBreakdown));
   const byType = {};
   const totals = Object.fromEntries(STAY_STATUSES.map((s) => [s, 0]));
   totals.TOTAL = 0;
 
-  STAY_TYPE_KEYS.forEach((type, i) => {
+  STAY_DEFAULT_KEYS.forEach((type, i) => {
     byType[type] = { label: STAY_TYPES[type].label, ...breakdownList[i] };
     Object.keys(totals).forEach((k) => { totals[k] += breakdownList[i][k] || 0; });
   });
 
   const bookingStats = await Promise.all(
-    BOOKING_TYPE_KEYS.map(async (type) => {
+    BOOKING_DEFAULT_KEYS.map(async (type) => {
       const cfg = BOOKING_TYPES[type];
       const amountExpr = `$${cfg.amountField}`;
       const statusExpr = `$${cfg.statusField}`;
@@ -428,7 +436,6 @@ export const getDashboard = handle(async (_req, res) => {
 
   const sellRows = await Promise.all(
     Object.entries(INVENTORY).map(async ([type, inv]) => {
-      // Guest House me `avail` field nahi, `totalRooms - bookedRooms` compute karna
       const availExpr =
         inv.avail === null
           ? { $max: [{ $subtract: [{ $ifNull: [`$${inv.total}`, 0] }, { $ifNull: [`$${inv.booked}`, 0] }] }, 0] }
@@ -551,7 +558,8 @@ async function countUnmapped() {
     { type: "palace", rooms: StaysPalaceRoomCategory, field: "palace" },
     { type: "resort", rooms: StaysResortRoom, field: "resort" },
     { type: "hostel", rooms: StaysHostelRoom, field: "hostelId" },
-    { type: "guesthouse", rooms: StaysGuestHouseRoom, field: "guestHouse" },   // ✅
+    { type: "guesthouse", rooms: StaysGuestHouseRoom, field: "guestHouse" },
+    { type: "campsite", rooms: StaysCampsiteUnit, field: "campsiteId" },   // ✅
   ];
 
   const counts = await Promise.all(
@@ -571,12 +579,12 @@ async function countUnmapped() {
 }
 
 async function roomReadiness() {
-  // Guest House ka room model bhi count karo (isActive == false ho to "not ready")
-  const [palace, resort, motel, gh] = await Promise.all([
+  const [palace, resort, motel, gh, camp] = await Promise.all([
     StaysPalaceRoomUnit.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
     StaysResortRoomUnit.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
     StaysMotelRoom.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
     StaysGuestHouseRoom.aggregate([{ $group: { _id: "$isActive", n: { $sum: 1 } } }]),
+    StaysCampsiteUnit.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
   ]);
 
   let total = 0, open = 0;
@@ -589,7 +597,11 @@ async function roomReadiness() {
   });
   gh.forEach((r) => {
     total += r.n;
-    if (r._id === false) open += r.n;   // isActive false = not ready
+    if (r._id === false) open += r.n;
+  });
+  camp.forEach((r) => {
+    total += r.n;
+    if (String(r._id).toLowerCase() === "inactive") open += r.n;   // inactive unit = not ready
   });
 
   return { total, open, percent: total ? Math.round(((total - open) / total) * 100) : null };
@@ -597,7 +609,7 @@ async function roomReadiness() {
 
 async function latestPendingProperty() {
   const rows = await Promise.all(
-    STAY_TYPE_KEYS.map(async (type) => {
+    STAY_DEFAULT_KEYS.map(async (type) => {
       const cfg = STAY_TYPES[type];
       const d = await cfg.model
         .findOne(and(cfg.baseFilter, buildStatusFilter(type, "PENDING")))
@@ -621,7 +633,7 @@ async function latestPendingProperty() {
 }
 
 async function latestArrival(today, tomorrow) {
-  for (const type of BOOKING_TYPE_KEYS) {
+  for (const type of BOOKING_DEFAULT_KEYS) {
     const cfg = BOOKING_TYPES[type];
     const b = await cfg.model
       .findOne({ [cfg.checkInField]: dayMatch(cfg, today, tomorrow), [cfg.statusField]: { $in: ARRIVAL_STATUS_RX } })
@@ -705,16 +717,16 @@ export const getPropertyDetail = handle(async (req, res) => {
   const vendorDoc = vendorId && isId(vendorId) ? await StaysVendor.findById(vendorId).lean() : null;
 
   const pid = oid(id);
+  const base = canon(type);                         // serviceapartment -> apartment
   const bcfg = BOOKING_TYPES[type];
-  const inv = INVENTORY[type];
-  const roomCfg = ROOMS[type];
-  const rateCfg = RATE_PLANS[type];
-  const reviewCfg = REVIEWS[type];
+  const inv = INVENTORY[base];
+  const roomCfg = ROOMS[base];
+  const rateCfg = RATE_PLANS[base];
+  const reviewCfg = REVIEWS[base];
   const today = startOfDay();
 
-  const strInv = STRING_INVENTORY[type] || null;
-  // ✅ Guest House ke liye alag inventory loader
-  const ghInv = type === "guesthouse" ? GH_INVENTORY : null;
+  const strInv = STRING_INVENTORY[base] || null;
+  const ghInv = base === "guesthouse" ? GH_INVENTORY : null;
 
   const [rooms, units, ratePlans, inventory, recentBookings, bookingAgg, reviews] = await Promise.all([
     roomCfg ? roomCfg.model.find({ [roomCfg.propertyField]: pid }).sort({ createdAt: -1 }).limit(200).lean() : [],
@@ -743,9 +755,8 @@ export const getPropertyDetail = handle(async (req, res) => {
     if (!BOOKING_NOT_REVENUE.includes(s)) bookingSummary.grossValue += r.amount || 0;
   });
 
-  const embeddedRooms = type === "bnb" ? doc.roomTypes || [] : type === "hotel" ? doc.rooms || [] : [];
+  const embeddedRooms = base === "bnb" ? doc.roomTypes || [] : base === "hotel" ? doc.rooms || [] : [];
 
-  // ✅ Inventory decorate
   let inventoryOut = inventory;
   if (ghInv) inventoryOut = inventory.map(ghInv.decorate);
   else if (strInv?.decorate) inventoryOut = inventory.map(strInv.decorate);
@@ -841,8 +852,9 @@ export const listRooms = handle(async (req, res) => {
   const { page, limit, skip } = pageParams(req.query, 25, 200);
 
   if (!STAY_TYPES[type]) return sendErr(res, 400, "INVALID_TYPE", `Unknown stay type: ${type}`);
+  const base = canon(type);
 
-  if (type === "bnb") {
+  if (base === "bnb") {
     const filter = propertyId && isId(propertyId) ? { _id: propertyId } : {};
     const props = await STAY_TYPES.bnb.model.find(filter).select("propertyName roomTypes").limit(limit).skip(skip).lean();
     const rooms = props.flatMap((p) =>
@@ -851,7 +863,7 @@ export const listRooms = handle(async (req, res) => {
     return sendOk(res, rooms, { page, limit, total: rooms.length });
   }
 
-  if (type === "apartment") {
+  if (base === "apartment") {
     const filter = propertyId && isId(propertyId) ? { apartment: oid(propertyId) } : {};
     const [rows, total] = await Promise.all([
       StaysApartmentRatePlan.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
@@ -860,14 +872,14 @@ export const listRooms = handle(async (req, res) => {
     return sendOk(res, rows, { page, limit, total, note: "Apartment me apartment hi sellable unit hai; yahan rate plans hain" });
   }
 
-  const cfg = ROOMS[type];
+  const cfg = ROOMS[base];
   if (!cfg) return sendOk(res, [], { page, limit, total: 0 });
 
   // Guest House me status field nahi, isActive hai
   const statusFilter =
-    status && type !== "guesthouse"
+    status && base !== "guesthouse"
       ? { status: new RegExp(`^${escapeRegex(status)}$`, "i") }
-      : status && type === "guesthouse"
+      : status && base === "guesthouse"
       ? { isActive: String(status).toLowerCase() === "active" }
       : null;
 
@@ -881,7 +893,7 @@ export const listRooms = handle(async (req, res) => {
     cfg.model.countDocuments(filter),
   ]);
 
-  const propMap = await loadPropertyMap([{ type, ids: rows.map((r) => r[cfg.propertyField]) }]);
+  const propMap = await loadPropertyMap([{ type: base, ids: rows.map((r) => r[cfg.propertyField]) }]);
   const data = rows.map((r) => ({
     ...r,
     property: propMap[String(r[cfg.propertyField])] || null,
@@ -894,8 +906,8 @@ export const listRooms = handle(async (req, res) => {
 
 export const listRatePlans = handle(async (req, res) => {
   const { type = "palace", propertyId } = req.query;
-  const cfg = RATE_PLANS[type];
-  if (!cfg) return sendErr(res, 400, "NO_RATE_PLANS", "Rate plans sirf apartment, palace, resort me hote hain");
+  const cfg = RATE_PLANS[canon(type)];
+  if (!cfg) return sendErr(res, 400, "NO_RATE_PLANS", "Rate plans sirf apartment, service apartment, palace, resort me hote hain");
 
   const { page, limit, skip } = pageParams(req.query, 25, 200);
   const filter = propertyId && isId(propertyId) ? { [cfg.propertyField]: oid(propertyId) } : {};
@@ -911,9 +923,10 @@ export const listRatePlans = handle(async (req, res) => {
 /* ============================================================ */
 
 export const listInventory = handle(async (req, res) => {
-  const { type = "hotel", propertyId, from, to } = req.query;
+  const { propertyId, from, to } = req.query;
+  const type = canon(req.query.type || "hotel");
 
-  // ✅ Guest House — date is Date type, availability computed
+  // Guest House — date is Date type, availability computed
   if (type === "guesthouse") {
     const { page, limit, skip } = pageParams(req.query, 200, 1000);
     const range = dateRange(from, to) || { $gte: startOfDay(), $lt: addDays(startOfDay(), 31) };
@@ -959,7 +972,7 @@ export const listInventory = handle(async (req, res) => {
   }
 
   const inv = INVENTORY[type];
-  if (!inv) return sendErr(res, 400, "NO_INVENTORY", `${type} me inventory calendar nahi hai`);
+  if (!inv) return sendErr(res, 400, "NO_INVENTORY", `${req.query.type || type} me inventory calendar nahi hai`);
 
   const { page, limit, skip } = pageParams(req.query, 62, 500);
   const range = dateRange(from, to) || { $gte: startOfDay(), $lt: addDays(startOfDay(), 31) };
@@ -983,7 +996,6 @@ async function findOverbooking({ limit = 50, skip = 0 } = {}) {
   const today = startOfDay();
   const results = await Promise.all(
     Object.entries(INVENTORY).map(async ([type, inv]) => {
-      // Guest house: blocked field nahi, avail virtual nahi
       const blockedExpr = inv.blocked ? { $ifNull: [`$${inv.blocked}`, 0] } : 0;
       const availExpr = inv.avail
         ? { $ifNull: [`$${inv.avail}`, 0] }
@@ -1090,7 +1102,7 @@ export const listBookings = handle(async (req, res) => {
 
   const propMap = await loadPropertyMap(
     types.map((type) => ({
-      type,
+      type: canon(type),
       ids: merged.filter((m) => m.type === type).map((m) => m.d[BOOKING_TYPES[type].propertyField]),
     }))
   );
@@ -1115,7 +1127,7 @@ export const getBookingDetail = handle(async (req, res) => {
   if (!booking) return sendErr(res, 404, "NOT_FOUND", "Booking not found");
 
   const vendorKey = cfg.vendorField || "vendor";
-  const propMap = await loadPropertyMap([{ type, ids: [booking[cfg.propertyField]] }]);
+  const propMap = await loadPropertyMap([{ type: canon(type), ids: [booking[cfg.propertyField]] }]);
   const vendorMap = await loadVendorMap([booking[vendorKey]]);
 
   let siblings = [];
@@ -1208,7 +1220,7 @@ export const moderateReview = handle(async (req, res) => {
 
 async function stayVendorQuery() {
   const idLists = await Promise.all(
-    STAY_TYPE_KEYS.flatMap((t) => {
+    STAY_DEFAULT_KEYS.flatMap((t) => {
       const cfg = STAY_TYPES[t];
       return [cfg.vendorField, cfg.vendorAltField].filter(Boolean).map((field) => cfg.model.distinct(field));
     })
@@ -1218,7 +1230,7 @@ async function stayVendorQuery() {
   return {
     $or: [
       { _id: { $in: ids } },
-      { serviceTypes: { $in: [/stay/i, /hotel/i, /motel/i, /homestay/i, /apartment/i, /villa/i, /vacation/i, /palace/i, /resort/i, /bnb/i, /hostel/i, /guest\s*house/i] } },
+      { serviceTypes: { $in: [/stay/i, /hotel/i, /motel/i, /homestay/i, /apartment/i, /villa/i, /vacation/i, /palace/i, /resort/i, /bnb/i, /hostel/i, /guest\s*house/i, /camp/i] } },
     ],
   };
 }
@@ -1244,7 +1256,7 @@ export const listVendors = handle(async (req, res) => {
 
   const ids = vendors.map((v) => v._id);
   const counts = await Promise.all(
-    STAY_TYPE_KEYS.map(async (type) => {
+    STAY_DEFAULT_KEYS.map(async (type) => {
       const cfg = STAY_TYPES[type];
       const rows = await cfg.model.aggregate([
         { $match: and(cfg.baseFilter, vendorClause(cfg, { $in: ids })) },
@@ -1284,7 +1296,7 @@ export const getVendorDetail = handle(async (req, res) => {
 
   const [propertyLists, bookingAggs] = await Promise.all([
     Promise.all(
-      STAY_TYPE_KEYS.map(async (type) => {
+      STAY_DEFAULT_KEYS.map(async (type) => {
         const cfg = STAY_TYPES[type];
         const docs = await cfg.model
           .find(and(cfg.baseFilter, vendorClause(cfg, vid)))
@@ -1293,7 +1305,7 @@ export const getVendorDetail = handle(async (req, res) => {
       })
     ),
     Promise.all(
-      BOOKING_TYPE_KEYS.map(async (type) => {
+      BOOKING_DEFAULT_KEYS.map(async (type) => {
         const cfg = BOOKING_TYPES[type];
         const rows = await cfg.model.aggregate([
           { $match: { [cfg.vendorField || "vendor"]: vid } },
@@ -1392,7 +1404,7 @@ export const getPayouts = handle(async (req, res) => {
     );
 
   const payments = await Promise.all(
-    BOOKING_TYPE_KEYS.map(async (type) => {
+    BOOKING_DEFAULT_KEYS.map(async (type) => {
       const cfg = BOOKING_TYPES[type];
       const rows = await cfg.model.aggregate([
         { $match: baseMatch(cfg) },

@@ -4,13 +4,27 @@
  * Vendor aur Admin SAME MongoDB use karte hain. Collections ko strict:false
  * schema se bind kiya gaya hai, taaki vendor ke saare fields fetch hon.
  *
- * Covered: Hotel, Motel, Homestay, Apartment, Villa, Vacation House,
- *          Guest House, Palace, Resort, BnB, Hostel
+ * Covered: Hotel, Motel, Homestay, Apartment, Service Apartment, Villa,
+ *          Vacation House, Guest House, Palace, Resort, BnB, Hostel, Campsite
  */
 
 import mongoose from "mongoose";
 
 const { Schema } = mongoose;
+
+/* ============================================================
+   SERVICE APARTMENT SETTING
+   ------------------------------------------------------------
+   false (default) -> Service Apartment = Apartment ka hi alias.
+                      Same collection, same API, same data. Sirf alag
+                      module/naam. Totals me double count nahi hota.
+   true            -> Vendor side apartment ka propertyType/apartmentType
+                      "service" wala ho to wo Service Apartment me jayega
+                      aur Apartment me nahi dikhega.
+============================================================ */
+
+export const SERVICE_APARTMENT_SPLIT = false;
+const SERVICE_RX = /service/i;
 
 /* ============================================================
    COLLECTION BINDINGS
@@ -27,8 +41,9 @@ const COLLECTIONS = {
   bnb: "bnbproperties",
   villa: "villas",
   vacationHouse: "vacationhouses",
-  guestHouse: "guesthouses",          // ✅ naya
+  guestHouse: "guesthouses",
   hostel: "hostels",
+  campsite: "campsites",              // ✅ naya (vendor: Campsite model)
   motelOperator: "motelvendors",
 
   // Rooms / units
@@ -43,7 +58,8 @@ const COLLECTIONS = {
   hostelBed: "hostelbeds",
   villaRoom: "villaroomtypes",
   vacationHouseRoom: "vacationhouseroomtypes",
-  guestHouseRoom: "guesthouserooms",  // ✅ naya
+  guestHouseRoom: "guesthouserooms",
+  campsiteUnit: "campsiteunits",      // ✅ naya (vendor: CampsiteUnit model)
 
   // Rates
   apartmentRatePlan: "apartmentrateplans",
@@ -55,7 +71,7 @@ const COLLECTIONS = {
   motelInventory: "motelinventories",
   villaInventory: "villinventories",
   vacationHouseInventory: "vacationhouseinventories",
-  guestHouseInventory: "guesthouseinventories",   // ✅ naya
+  guestHouseInventory: "guesthouseinventories",
   homestayInventory: "homestayinventories",
   apartmentInventory: "apartmentinventories",
   palaceInventory: "palaceinventories",
@@ -66,7 +82,7 @@ const COLLECTIONS = {
   motelBooking: "motelbookings",
   villaBooking: "villabookings",
   vacationHouseBooking: "vacationhousebookings",
-  guestHouseBooking: "guesthousebookings",        // ✅ naya
+  guestHouseBooking: "guesthousebookings",
   homestayBooking: "homestaybookings",
   apartmentBooking: "apartmentbookings",
   palaceBooking: "palacebookings",
@@ -107,7 +123,8 @@ export const StaysResort = bind("Resort", COLLECTIONS.resort);
 export const StaysBnb = bind("Bnb", COLLECTIONS.bnb);
 export const StaysVilla = bind("Villa", COLLECTIONS.villa);
 export const StaysVacationHouse = bind("VacationHouse", COLLECTIONS.vacationHouse);
-export const StaysGuestHouse = bind("GuestHouse", COLLECTIONS.guestHouse);   // ✅
+export const StaysGuestHouse = bind("GuestHouse", COLLECTIONS.guestHouse);
+export const StaysCampsite = bind("Campsite", COLLECTIONS.campsite);   // ✅
 export const StaysMotelOperator = bind("MotelOperator", COLLECTIONS.motelOperator);
 
 export const StaysHotelRoom = bind("HotelRoom", COLLECTIONS.hotelRoom);
@@ -119,7 +136,8 @@ export const StaysResortRoom = bind("ResortRoom", COLLECTIONS.resortRoom);
 export const StaysResortRoomUnit = bind("ResortRoomUnit", COLLECTIONS.resortRoomUnit);
 export const StaysVillaRoom = bind("VillaRoom", COLLECTIONS.villaRoom);
 export const StaysVacationHouseRoom = bind("VacationHouseRoom", COLLECTIONS.vacationHouseRoom);
-export const StaysGuestHouseRoom = bind("GuestHouseRoom", COLLECTIONS.guestHouseRoom);   // ✅
+export const StaysGuestHouseRoom = bind("GuestHouseRoom", COLLECTIONS.guestHouseRoom);
+export const StaysCampsiteUnit = bind("CampsiteUnit", COLLECTIONS.campsiteUnit);   // ✅
 
 export const StaysApartmentRatePlan = bind("ApartmentRatePlan", COLLECTIONS.apartmentRatePlan);
 export const StaysPalaceRatePlan = bind("PalaceRatePlan", COLLECTIONS.palaceRatePlan);
@@ -129,7 +147,7 @@ export const StaysHotelInventory = bind("HotelInventory", COLLECTIONS.hotelInven
 export const StaysMotelInventory = bind("MotelInventory", COLLECTIONS.motelInventory);
 export const StaysVillaInventory = bind("VillaInventory", COLLECTIONS.villaInventory);
 export const StaysVacationHouseInventory = bind("VacationHouseInventory", COLLECTIONS.vacationHouseInventory);
-export const StaysGuestHouseInventory = bind("GuestHouseInventory", COLLECTIONS.guestHouseInventory);   // ✅
+export const StaysGuestHouseInventory = bind("GuestHouseInventory", COLLECTIONS.guestHouseInventory);
 export const StaysHomestayInventory = bind("HomestayInventory", COLLECTIONS.homestayInventory);
 export const StaysApartmentInventory = bind("ApartmentInventory", COLLECTIONS.apartmentInventory);
 export const StaysPalaceInventory = bind("PalaceInventory", COLLECTIONS.palaceInventory);
@@ -139,7 +157,7 @@ export const StaysHotelBooking = bind("HotelBooking", COLLECTIONS.hotelBooking);
 export const StaysMotelBooking = bind("MotelBooking", COLLECTIONS.motelBooking);
 export const StaysVillaBooking = bind("VillaBooking", COLLECTIONS.villaBooking);
 export const StaysVacationHouseBooking = bind("VacationHouseBooking", COLLECTIONS.vacationHouseBooking);
-export const StaysGuestHouseBooking = bind("GuestHouseBooking", COLLECTIONS.guestHouseBooking);   // ✅
+export const StaysGuestHouseBooking = bind("GuestHouseBooking", COLLECTIONS.guestHouseBooking);
 export const StaysHomestayBooking = bind("HomestayBooking", COLLECTIONS.homestayBooking);
 export const StaysApartmentBooking = bind("ApartmentBooking", COLLECTIONS.apartmentBooking);
 export const StaysPalaceBooking = bind("PalaceBooking", COLLECTIONS.palaceBooking);
@@ -251,7 +269,9 @@ export const STAY_TYPES = {
     label: "Apartment",
     model: StaysApartment,
     vendorField: "vendor",
-    baseFilter: { isDeleted: { $ne: true } },
+    baseFilter: SERVICE_APARTMENT_SPLIT
+      ? { isDeleted: { $ne: true }, $nor: [{ propertyType: SERVICE_RX }, { apartmentType: SERVICE_RX }] }
+      : { isDeleted: { $ne: true } },
     statusKind: "enum",
     statusCase: "lower",
     statusEnum: ["draft", "pending", "approved", "rejected", "inactive"],
@@ -324,9 +344,7 @@ export const STAY_TYPES = {
     cityField: "address.city",
   },
 
-  // ✅ GUEST HOUSE — "guesthouses" collection.
-  // Vendor schema: status enum ["pending","approved","rejected"], default "approved";
-  // isActive boolean; guestHouseName; city; guestHouseImages[]; pricePerNight.
+  // GUEST HOUSE — "guesthouses" collection.
   guesthouse: {
     label: "Guest House",
     model: StaysGuestHouse,
@@ -341,11 +359,43 @@ export const STAY_TYPES = {
     stateOf: (d) => d.state,
     imageOf: (d) => firstImage(d.guestHouseImages),
     priceOf: (d) => d.pricePerNight ?? null,
-    roomsOf: (d) => d.totalRooms ?? 0,     // totalRooms guest house pe nahi hota — 0 rahega; listRooms se aayega
+    roomsOf: (d) => d.totalRooms ?? 0,
     featuredOf: (d) => !!d.featured,
     ratingOf: (d) => d.averageRating ?? 0,
     searchFields: ["guestHouseName", "city", "state", "phone", "email", "area", "hostName"],
     cityField: "city",
+  },
+
+  // ✅ CAMPSITE — "campsites" collection (vendor model: Campsite)
+  // Vendor schema: vendorId, name, description, location{address,city,state,pincode},
+  // contact{name,phone,email}, amenities[], rules[], basePrice, maxGuests,
+  // images{cover,gallery[]}, documents[], status enum [active, inactive, pending] (default active).
+  // Admin status mapping:
+  //   active   -> APPROVED
+  //   pending  -> PENDING
+  //   inactive -> INACTIVE  (rejectionReason ho to REJECTED, suspensionReason ho to SUSPENDED)
+  campsite: {
+    label: "Campsite",
+    model: StaysCampsite,
+    vendorField: "vendorId",
+    baseFilter: {},
+    statusKind: "campsite",
+    statusEnum: [],
+    nameOf: (d) => d.name,
+    subtypeOf: () => "Campsite",
+    cityOf: (d) => get(d, "location.city"),
+    stateOf: (d) => get(d, "location.state"),
+    imageOf: (d) => get(d, "images.cover") || firstImage(d.images?.gallery),
+    priceOf: (d) => d.basePrice ?? null,
+    roomsOf: () => 0,                         // tents/units CampsiteUnit se aate hain (rooms endpoint)
+    featuredOf: (d) => !!d.featured,
+    ratingOf: (d) => d.averageRating ?? 0,
+    searchFields: [
+      "name", "slug",
+      "location.city", "location.state", "location.pincode", "location.address",
+      "contact.name", "contact.phone", "contact.email",
+    ],
+    cityField: "location.city",
   },
 
   palace: {
@@ -435,7 +485,25 @@ export const STAY_TYPES = {
   },
 };
 
+// ✅ SERVICE APARTMENT — apartment ke saath SAME collection / same API.
+// SPLIT=false: alias (aliasOf: "apartment") — rooms/rates/inventory/bookings apartment wale hi chalte hain.
+STAY_TYPES.serviceapartment = {
+  ...STAY_TYPES.apartment,
+  label: "Service Apartment",
+  aliasOf: SERVICE_APARTMENT_SPLIT ? null : "apartment",
+  baseFilter: SERVICE_APARTMENT_SPLIT
+    ? { isDeleted: { $ne: true }, $or: [{ propertyType: SERVICE_RX }, { apartmentType: SERVICE_RX }] }
+    : STAY_TYPES.apartment.baseFilter,
+};
+
+/** Har type key (module list / validation). */
 export const STAY_TYPE_KEYS = Object.keys(STAY_TYPES);
+
+/** Totals / dashboard / vendor counts ke liye (alias double count nahi hota). */
+export const STAY_DEFAULT_KEYS = STAY_TYPE_KEYS.filter((k) => !STAY_TYPES[k].aliasOf);
+
+/** Alias ko asli type me badalta hai (rooms/rates/inventory lookup ke liye). */
+export const canon = (type) => (STAY_TYPES[type] && STAY_TYPES[type].aliasOf) || type;
 
 function minRoomPrice(rooms) {
   if (!Array.isArray(rooms) || !rooms.length) return null;
@@ -485,6 +553,18 @@ export function normalizeStatus(type, doc) {
     if (!isBlank(doc.rejectionReason)) return "REJECTED";
     if (!isBlank(doc.suspensionReason)) return "SUSPENDED";
     return "INACTIVE";
+  }
+
+  // ✅ Campsite: active | pending | inactive
+  if (cfg.statusKind === "campsite") {
+    const raw = String(doc.status ?? "active").toLowerCase();
+    if (raw === "pending") return "PENDING";
+    if (raw === "inactive") {
+      if (!isBlank(doc.rejectionReason)) return "REJECTED";
+      if (!isBlank(doc.suspensionReason)) return "SUSPENDED";
+      return "INACTIVE";
+    }
+    return "APPROVED";
   }
 
   if (cfg.statusKind === "motel") {
@@ -554,6 +634,32 @@ export function buildStatusPatch(type, action, { reason = "", adminId = null } =
   }
 
   if (cfg.statusKind === "vacation") {
+    switch (action) {
+      case "approve":
+      case "reactivate":
+        patch.status = "active";
+        patch.rejectionReason = "";
+        patch.suspensionReason = "";
+        if (action === "approve") withAdmin();
+        break;
+      case "reject":
+        patch.status = "inactive";
+        patch.rejectionReason = reason;
+        patch.suspensionReason = "";
+        break;
+      case "suspend":
+        patch.status = "inactive";
+        patch.suspensionReason = reason || "Suspended by admin";
+        patch.rejectionReason = "";
+        break;
+      default:
+        return null;
+    }
+    return patch;
+  }
+
+  // ✅ Campsite
+  if (cfg.statusKind === "campsite") {
     switch (action) {
       case "approve":
       case "reactivate":
@@ -660,12 +766,16 @@ export function buildStatusFilter(type, status) {
     return null;
   }
 
-  if (cfg.statusKind === "vacation") {
+  if (cfg.statusKind === "vacation" || cfg.statusKind === "campsite") {
     const blank = (f) => ({ $or: [{ [f]: { $exists: false } }, { [f]: { $in: ["", null] } }] });
     const filled = (f) => ({ [f]: { $exists: true, $nin: ["", null] } });
+    const isCamp = cfg.statusKind === "campsite";
 
     switch (upper) {
-      case "APPROVED": return { status: { $ne: "inactive" } };
+      case "APPROVED":
+        return isCamp ? { status: { $nin: ["inactive", "pending"] } } : { status: { $ne: "inactive" } };
+      case "PENDING":
+        return isCamp ? { status: "pending" } : { _id: { $exists: false } };
       case "REJECTED": return { status: "inactive", ...filled("rejectionReason") };
       case "SUSPENDED": return { status: "inactive", ...filled("suspensionReason"), ...blank("rejectionReason") };
       case "INACTIVE": return { status: "inactive", $and: [blank("rejectionReason"), blank("suspensionReason")] };
@@ -733,6 +843,8 @@ export function summarizeStay(type, doc, vendorMap = {}) {
     isActive:
       cfg.statusKind === "vacation"
         ? String(d.status ?? "active").toLowerCase() !== "inactive"
+        : cfg.statusKind === "campsite"
+        ? String(d.status ?? "active").toLowerCase() === "active"
         : d.isActive !== false,
     featured: cfg.featuredOf(d),
     rejectionReason: d.rejectionReason || "",
@@ -846,11 +958,7 @@ export const BOOKING_TYPES = {
     searchFields: ["bookingId", "guest.name", "guest.email", "guest.phone"],
   },
 
-  // ✅ GUEST HOUSE booking (guesthousebookings)
-  // Ek doc = ek room type. checkIn/checkOut Date type hain (dateType string NAHI).
-  // status UPPERCASE (PENDING/CONFIRMED/CHECKED_IN/COMPLETED/CANCELLED/NO_SHOW).
-  // paymentStatus PENDING/PARTIALLY_PAID/PAID/REFUND_PENDING/REFUNDED.
-  // Reference field: bookingCode.
+  // GUEST HOUSE booking (guesthousebookings)
   guesthouse: {
     model: StaysGuestHouseBooking,
     propertyField: "guestHouse",
@@ -972,7 +1080,13 @@ export const BOOKING_TYPES = {
   },
 };
 
+// ✅ Service Apartment bookings = apartment bookings (same collection `apartmentbookings`)
+BOOKING_TYPES.serviceapartment = { ...BOOKING_TYPES.apartment };
+
 export const BOOKING_TYPE_KEYS = Object.keys(BOOKING_TYPES);
+
+/** Totals / dashboard / payouts ke liye (alias double count nahi hota). */
+export const BOOKING_DEFAULT_KEYS = BOOKING_TYPE_KEYS.filter((k) => k !== "serviceapartment");
 
 export function summarizeBooking(type, doc, propertyMap = {}) {
   const cfg = BOOKING_TYPES[type];
